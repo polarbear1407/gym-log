@@ -498,10 +498,20 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 let recognition = null;
 let listening = false;
 
-if (!SpeechRecognition) {
-  micBtn.disabled = true;
-  micHint.textContent = "この端末は音声入力非対応です（テキスト入力をご利用ください）";
-} else {
+/* キーボード音声入力モード:
+   Web Speech APIが使えない端末（iOS Safariのservice-not-allowed等）では、
+   マイクボタンで入力欄にフォーカスし、キーボードのマイクで話してもらう */
+const DICTATION_MODE_KEY = "useKeyboardDictation";
+let dictationMode = !SpeechRecognition || localStorage.getItem(DICTATION_MODE_KEY) === "1";
+
+function enterDictationMode(persist) {
+  dictationMode = true;
+  if (persist) localStorage.setItem(DICTATION_MODE_KEY, "1");
+  micHint.textContent = "タップ → キーボードのマイク 🎤 で話す";
+  manualInput.placeholder = "キーボードのマイクで話して「追加」";
+}
+
+if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.lang = "ja-JP";
   recognition.interimResults = true;
@@ -537,7 +547,8 @@ if (!SpeechRecognition) {
     if (event.error === "no-speech") {
       showMessage("⚠ 音声が聞き取れませんでした。もう一度お試しください", "error");
     } else if (event.error === "service-not-allowed") {
-      showMessage("⚠ 音声認識サービスが無効です [service-not-allowed]。iPhoneの場合：設定 → 一般 → キーボード →「音声入力」をオンにしてください", "error");
+      enterDictationMode(true);
+      showMessage("この端末ではWeb音声認識が使えないため、キーボード音声入力モードに切り替えました。マイクボタンをタップ → キーボードのマイク 🎤 で話して「追加」を押してください", "ok");
     } else if (event.error === "not-allowed") {
       showMessage("⚠ マイクの使用が拒否されています [not-allowed]。アドレスバー左の「ぁあ」→「Webサイトの設定」→ マイクを「許可」に。ホーム画面から起動している場合はSafari本体で開き直してください", "error");
     } else if (event.error === "audio-capture") {
@@ -550,22 +561,33 @@ if (!SpeechRecognition) {
   recognition.onend = () => {
     listening = false;
     micBtn.classList.remove("recording");
-    micHint.textContent = "マイクをタップして話す";
     micHint.classList.remove("listening");
+    if (dictationMode) {
+      enterDictationMode(false);
+    } else {
+      micHint.textContent = "マイクをタップして話す";
+    }
   };
 
-  micBtn.addEventListener("click", () => {
-    if (listening) {
-      recognition.stop();
-    } else {
-      try {
-        recognition.start();
-      } catch {
-        /* 連打などで既に開始済みの場合は無視 */
-      }
-    }
-  });
 }
+
+micBtn.addEventListener("click", () => {
+  if (dictationMode || !recognition) {
+    manualInput.focus();
+    return;
+  }
+  if (listening) {
+    recognition.stop();
+  } else {
+    try {
+      recognition.start();
+    } catch {
+      /* 連打などで既に開始済みの場合は無視 */
+    }
+  }
+});
+
+if (dictationMode) enterDictationMode(false);
 
 /* ==============================
    初期化
