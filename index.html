@@ -536,8 +536,12 @@ if (!SpeechRecognition) {
   recognition.onerror = (event) => {
     if (event.error === "no-speech") {
       showMessage("⚠ 音声が聞き取れませんでした。もう一度お試しください", "error");
-    } else if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-      showMessage("⚠ マイクの使用が許可されていません。ブラウザの設定を確認してください", "error");
+    } else if (event.error === "service-not-allowed") {
+      showMessage("⚠ 音声認識サービスが無効です [service-not-allowed]。iPhoneの場合：設定 → 一般 → キーボード →「音声入力」をオンにしてください", "error");
+    } else if (event.error === "not-allowed") {
+      showMessage("⚠ マイクの使用が拒否されています [not-allowed]。アドレスバー左の「ぁあ」→「Webサイトの設定」→ マイクを「許可」に。ホーム画面から起動している場合はSafari本体で開き直してください", "error");
+    } else if (event.error === "audio-capture") {
+      showMessage("⚠ マイクにアクセスできません [audio-capture]。他のアプリがマイクを使用していないか確認してください", "error");
     } else if (event.error !== "aborted") {
       showMessage(`⚠ 音声認識エラー: ${event.error}`, "error");
     }
