@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1115">
+<title>筋トレログ</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --surface: #1a1d24;
+    --surface-2: #232733;
+    --border: #333a48;
+    --text: #f2f4f8;
+    --text-dim: #9aa3b2;
+    --accent: #a3e635;
+    --accent-dark: #65a30d;
+    --danger: #f87171;
+    --rec: #ef4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    max-width: 640px;
+    margin: 0 auto;
+    min-height: 100dvh;
+  }
+
+  /* ---------- ヘッダー ---------- */
+  header {
+    padding: 16px 20px 8px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  header h1 { font-size: 20px; font-weight: 800; letter-spacing: .02em; }
+  header h1 span { color: var(--accent); }
+  #today-date { font-size: 13px; color: var(--text-dim); }
+
+  /* ---------- 音声入力エリア ---------- */
+  .voice-area {
+    padding: 12px 20px 4px;
+    text-align: center;
+  }
+  #mic-btn {
+    width: 104px;
+    height: 104px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: #10130a;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 24px rgba(163, 230, 53, .35);
+    transition: transform .1s ease, background .2s ease;
+    touch-action: manipulation;
+  }
+  #mic-btn:active { transform: scale(.94); }
+  #mic-btn svg { width: 44px; height: 44px; }
+  #mic-btn.recording {
+    background: var(--rec);
+    color: #fff;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, .6);
+    animation: pulse 1.4s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, .55); }
+    70%  { box-shadow: 0 0 0 26px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+  #mic-btn:disabled { background: var(--surface-2); color: var(--text-dim); box-shadow: none; cursor: not-allowed; }
+  #mic-hint { margin-top: 10px; font-size: 13px; color: var(--text-dim); min-height: 1.3em; }
+  #mic-hint.listening { color: var(--rec); font-weight: 700; }
+
+  /* ---------- 認識テキスト表示 ---------- */
+  #transcript-box {
+    margin: 12px 20px 0;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-height: 52px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #transcript-box .label {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--text-dim);
+    writing-mode: horizontal-tb;
+  }
+  #transcript-text { flex: 1; word-break: break-all; }
+  #transcript-text .interim { color: var(--text-dim); }
+  #transcript-text:empty::before { content: "例：「ベンチプレス60キロ 10回 3セット」"; color: #566072; font-size: 14px; }
+
+  /* ---------- 手入力フォールバック ---------- */
+  .manual-row {
+    display: flex;
+    gap: 8px;
+    margin: 10px 20px 0;
+  }
+  .manual-row input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 16px;
+    padding: 12px 14px;
+    min-width: 0;
+  }
+  .manual-row input::placeholder { color: #566072; }
+  .manual-row input:focus { outline: 2px solid var(--accent-dark); border-color: transparent; }
+  .manual-row button {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-size: 15px;
+    font-weight: 700;
+    padding: 0 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .manual-row button:active { background: var(--border); }
+
+  /* ---------- メッセージ ---------- */
+  #message {
+    margin: 10px 20px 0;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    display: none;
+  }
+  #message.ok    { display: block; background: rgba(163, 230, 53, .12); color: var(--accent); border: 1px solid rgba(163, 230, 53, .35); }
+  #message.error { display: block; background: rgba(248, 113, 113, .1); color: var(--danger); border: 1px solid rgba(248, 113, 113, .35); }
+
+  /* ---------- サマリー ---------- */
+  .summary {
+    display: flex;
+    gap: 10px;
+    margin: 16px 20px 0;
+  }
+  .summary .card {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    text-align: center;
+  }
+  .summary .card .num { font-size: 22px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .summary .card .lbl { font-size: 11px; color: var(--text-dim); }
+
+  /* ---------- 記録リスト ---------- */
+  .log-section { flex: 1; padding: 14px 20px 32px; }
+  .log-section h2 {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: .05em;
+  }
+  #log-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  #log-list li {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .part-badge {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: #10130a;
+  }
+  .part-胸    { background: #f472b6; }
+  .part-背中  { background: #60a5fa; }
+  .part-脚    { background: #fbbf24; }
+  .part-肩    { background: #a78bfa; }
+  .part-腕    { background: #34d399; }
+  .part-腹    { background: #fb923c; }
+  .part-その他 { background: #94a3b8; }
+  .entry-main { flex: 1; min-width: 0; }
+  .entry-main .name { font-weight: 700; font-size: 16px; }
+  .entry-main .detail { font-size: 13px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .entry-vol { text-align: right; flex-shrink: 0; }
+  .entry-vol .v { font-size: 17px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .entry-vol .u { font-size: 11px; color: var(--text-dim); }
+  .del-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 20px;
+    padding: 6px;
+    cursor: pointer;
+    line-height: 1;
+    touch-action: manipulation;
+  }
+  .del-btn:active { color: var(--danger); }
+  #empty-msg { color: #566072; font-size: 14px; text-align: center; padding: 24px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>筋トレ<span>ログ</span></h1>
+  <div id="today-date"></div>
+</header>
+
+<div class="voice-area">
+  <button id="mic-btn" aria-label="音声入力">
+    <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
+      <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V21H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-3.08A7 7 0 0 0 19 11z"/>
+    </svg>
+  </button>
+  <div id="mic-hint">マイクをタップして話す</div>
+</div>
+
+<div id="transcript-box">
+  <span class="label">認識結果</span>
+  <span id="transcript-text"></span>
+</div>
+
+<div class="manual-row">
+  <input type="text" id="manual-input" placeholder="テキストで入力もOK" autocomplete="off">
+  <button id="manual-add">追加</button>
+</div>
+
+<div id="message"></div>
+
+<div class="summary">
+  <div class="card"><div class="num" id="sum-count">0</div><div class="lbl">種目数</div></div>
+  <div class="card"><div class="num" id="sum-sets">0</div><div class="lbl">総セット</div></div>
+  <div class="card"><div class="num" id="sum-volume">0</div><div class="lbl">総負荷量 (kg)</div></div>
+</div>
+
+<section class="log-section">
+  <h2>今日の記録</h2>
+  <ul id="log-list"></ul>
+  <div id="empty-msg">まだ記録がありません。音声かテキストで入力してください。</div>
+</section>
+
+<script>
+"use strict";
+
+/* ==============================
+   部位判定マスタ（キーワード → 部位）
+   長いキーワードを優先してマッチさせる
+============================== */
+const BODY_PART_MASTER = {
+  // 胸
+  "ベンチプレス": "胸", "インクラインベンチプレス": "胸", "インクラインプレス": "胸",
+  "ダンベルプレス": "胸", "チェストプレス": "胸", "ダンベルフライ": "胸",
+  "ペックフライ": "胸", "ケーブルクロスオーバー": "胸", "ディップス": "胸",
+  "プッシュアップ": "胸", "腕立て伏せ": "胸", "腕立て": "胸",
+  // 背中
+  "デッドリフト": "背中", "ラットプルダウン": "背中", "ラットプル": "背中",
+  "ベントオーバーロー": "背中", "ベントオーバーロウ": "背中",
+  "シーテッドロー": "背中", "シーテッドロウ": "背中", "ワンハンドロー": "背中",
+  "ワンハンドロウ": "背中", "チンニング": "背中", "懸垂": "背中",
+  "プルオーバー": "背中", "バックエクステンション": "背中",
+  // 脚
+  "スクワット": "脚", "ブルガリアンスクワット": "脚", "フロントスクワット": "脚",
+  "レッグプレス": "脚", "レッグエクステンション": "脚", "レッグカール": "脚",
+  "ランジ": "脚", "カーフレイズ": "脚", "ヒップスラスト": "脚",
+  "ヒップアブダクション": "脚", "ヒップアダクション": "脚",
+  // 肩
+  "ショルダープレス": "肩", "ミリタリープレス": "肩", "サイドレイズ": "肩",
+  "フロントレイズ": "肩", "リアレイズ": "肩", "アップライトロー": "肩",
+  "アップライトロウ": "肩", "フェイスプル": "肩", "シュラッグ": "肩",
+  // 腕
+  "アームカール": "腕", "バーベルカール": "腕", "ダンベルカール": "腕",
+  "ハンマーカール": "腕", "プリチャーカール": "腕", "インクラインカール": "腕",
+  "トライセプスエクステンション": "腕", "フレンチプレス": "腕",
+  "スカルクラッシャー": "腕", "キックバック": "腕", "プレスダウン": "腕",
+  "リストカール": "腕",
+  // 腹
+  "アブローラー": "腹", "クランチ": "腹", "シットアップ": "腹",
+  "レッグレイズ": "腹", "プランク": "腹", "腹筋": "腹",
+};
+// 長い順にソートしたキー一覧（部分一致で長いものを優先）
+const MASTER_KEYS = Object.keys(BODY_PART_MASTER).sort((a, b) => b.length - a.length);
+
+function judgeBodyPart(name) {
+  for (const key of MASTER_KEYS) {
+    if (name.includes(key)) return BODY_PART_MASTER[key];
+  }
+  return "その他";
+}
+
+/* ==============================
+   自然言語パーサー
+   例：「ベンチプレス60キロ、10回、3セット」
+============================== */
+function normalizeText(raw) {
+  return raw
+    // 全角英数字 → 半角
+    .replace(/[０-９ａ-ｚＡ-Ｚ．]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+    .replace(/。/g, "")
+    .trim();
+}
+
+function parseWorkout(raw) {
+  const text = normalizeText(raw);
+  if (!text) return { error: "テキストが空です" };
+
+  // 重量: 「60キロ」「60kg」「60.5 kg」
+  const weightMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:kg|KG|Kg|キロ|ｷﾛ)/);
+  // 回数: 「10回」「10レップ」「10rep(s)」
+  const repsMatch = text.match(/(\d+)\s*(?:回|レップ|reps?|レップス)/i);
+  // セット数: 「3セット」「3set(s)」
+  const setsMatch = text.match(/(\d+)\s*(?:セット|sets?)/i);
+
+  // 種目名 = 最初の数値より前の部分
+  const firstNum = text.search(/\d/);
+  let name = (firstNum === -1 ? text : text.slice(0, firstNum))
+    .replace(/[、,。．\s]+$/g, "")
+    .replace(/(を|で|は)$/g, "")
+    .trim();
+
+  if (!name) return { error: "種目名が読み取れませんでした" };
+  if (!weightMatch && !repsMatch) {
+    return { error: "重量・回数が読み取れませんでした（例：ベンチプレス60キロ 10回 3セット）" };
+  }
+
+  const weight = weightMatch ? parseFloat(weightMatch[1]) : 0; // 自重種目は0kg扱い
+  const reps = repsMatch ? parseInt(repsMatch[1], 10) : 1;
+  const sets = setsMatch ? parseInt(setsMatch[1], 10) : 1;
+  const volume = Math.round(weight * reps * sets * 10) / 10; // 総負荷量
+
+  return {
+    name,
+    part: judgeBodyPart(name),
+    weight,
+    reps,
+    sets,
+    volume,
+  };
+}
+
+/* ==============================
+   データ保存（localStorage）
+============================== */
+const STORAGE_KEY = "gymLogEntries";
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function loadEntries() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveEntries(entries) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+
+let entries = loadEntries();
+
+/* ==============================
+   表示
+============================== */
+const logList = document.getElementById("log-list");
+const emptyMsg = document.getElementById("empty-msg");
+const sumCount = document.getElementById("sum-count");
+const sumSets = document.getElementById("sum-sets");
+const sumVolume = document.getElementById("sum-volume");
+
+function render() {
+  const today = entries.filter(e => e.date === todayStr());
+  logList.innerHTML = "";
+  emptyMsg.style.display = today.length ? "none" : "block";
+
+  // 新しい記録を上に表示
+  [...today].reverse().forEach(e => {
+    const li = document.createElement("li");
+
+    const badge = document.createElement("span");
+    badge.className = `part-badge part-${e.part}`;
+    badge.textContent = e.part;
+
+    const main = document.createElement("div");
+    main.className = "entry-main";
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "name";
+    nameDiv.textContent = e.name;
+    const isBodyweight = e.weight === 0;
+    const detailDiv = document.createElement("div");
+    detailDiv.className = "detail";
+    detailDiv.textContent = isBodyweight
+      ? `自重 × ${e.reps}回 × ${e.sets}セット`
+      : `${e.weight}kg × ${e.reps}回 × ${e.sets}セット`;
+    main.append(nameDiv, detailDiv);
+
+    const vol = document.createElement("div");
+    vol.className = "entry-vol";
+    vol.innerHTML = isBodyweight
+      ? `<div class="v">${(e.reps * e.sets).toLocaleString()}</div><div class="u">回 合計</div>`
+      : `<div class="v">${e.volume.toLocaleString()}</div><div class="u">kg 総負荷</div>`;
+
+    const del = document.createElement("button");
+    del.className = "del-btn";
+    del.setAttribute("aria-label", "削除");
+    del.textContent = "×";
+    del.addEventListener("click", () => {
+      entries = entries.filter(x => x.id !== e.id);
+      saveEntries(entries);
+      render();
+    });
+
+    li.append(badge, main, vol, del);
+    logList.appendChild(li);
+  });
+
+  sumCount.textContent = today.length;
+  sumSets.textContent = today.reduce((s, e) => s + e.sets, 0);
+  sumVolume.textContent = today.reduce((s, e) => s + e.volume, 0).toLocaleString();
+}
+
+/* ==============================
+   記録の追加
+============================== */
+const messageEl = document.getElementById("message");
+let messageTimer = null;
+
+function showMessage(text, type) {
+  messageEl.textContent = text;
+  messageEl.className = type;
+  clearTimeout(messageTimer);
+  messageTimer = setTimeout(() => { messageEl.className = ""; }, 4000);
+}
+
+function addFromText(raw) {
+  const result = parseWorkout(raw);
+  if (result.error) {
+    showMessage(`⚠ ${result.error}`, "error");
+    return false;
+  }
+  entries.push({
+    id: Date.now() + Math.random(),
+    date: todayStr(),
+    ...result,
+  });
+  saveEntries(entries);
+  render();
+  const summary = result.weight === 0
+    ? `合計 ${(result.reps * result.sets).toLocaleString()}回`
+    : `総負荷 ${result.volume.toLocaleString()}kg`;
+  showMessage(`✓ ${result.name}（${result.part}）を記録しました — ${summary}`, "ok");
+  return true;
+}
+
+/* ==============================
+   手入力
+============================== */
+const manualInput = document.getElementById("manual-input");
+document.getElementById("manual-add").addEventListener("click", () => {
+  if (addFromText(manualInput.value)) manualInput.value = "";
+});
+manualInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    if (addFromText(manualInput.value)) manualInput.value = "";
+  }
+});
+
+/* ==============================
+   音声入力（Web Speech API）
+============================== */
+const micBtn = document.getElementById("mic-btn");
+const micHint = document.getElementById("mic-hint");
+const transcriptText = document.getElementById("transcript-text");
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let listening = false;
+
+if (!SpeechRecognition) {
+  micBtn.disabled = true;
+  micHint.textContent = "この端末は音声入力非対応です（テキスト入力をご利用ください）";
+} else {
+  recognition = new SpeechRecognition();
+  recognition.lang = "ja-JP";
+  recognition.interimResults = true;
+  recognition.continuous = false;
+
+  recognition.onstart = () => {
+    listening = true;
+    micBtn.classList.add("recording");
+    micHint.textContent = "聞き取り中… もう一度タップで停止";
+    micHint.classList.add("listening");
+    transcriptText.textContent = "";
+  };
+
+  recognition.onresult = (event) => {
+    let finalText = "";
+    let interimText = "";
+    for (const result of event.results) {
+      if (result.isFinal) finalText += result[0].transcript;
+      else interimText += result[0].transcript;
+    }
+    transcriptText.innerHTML = "";
+    transcriptText.append(finalText);
+    if (interimText) {
+      const span = document.createElement("span");
+      span.className = "interim";
+      span.textContent = interimText;
+      transcriptText.appendChild(span);
+    }
+    if (finalText) addFromText(finalText);
+  };
+
+  recognition.onerror = (event) => {
+    if (event.error === "no-speech") {
+      showMessage("⚠ 音声が聞き取れませんでした。もう一度お試しください", "error");
+    } else if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      showMessage("⚠ マイクの使用が許可されていません。ブラウザの設定を確認してください", "error");
+    } else if (event.error !== "aborted") {
+      showMessage(`⚠ 音声認識エラー: ${event.error}`, "error");
+    }
+  };
+
+  recognition.onend = () => {
+    listening = false;
+    micBtn.classList.remove("recording");
+    micHint.textContent = "マイクをタップして話す";
+    micHint.classList.remove("listening");
+  };
+
+  micBtn.addEventListener("click", () => {
+    if (listening) {
+      recognition.stop();
+    } else {
+      try {
+        recognition.start();
+      } catch {
+        /* 連打などで既に開始済みの場合は無視 */
+      }
+    }
+  });
+}
+
+/* ==============================
+   初期化
+============================== */
+const now = new Date();
+document.getElementById("today-date").textContent =
+  `${now.getMonth() + 1}/${now.getDate()} (${"日月火水木金土"[now.getDay()]})`;
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+# ローカルHTTPS用の証明書・秘密鍵（絶対に公開しない）
+.local-https/
+
+# Claude Code 設定
+.claude/
+
+# macOS
+.DS_Store
