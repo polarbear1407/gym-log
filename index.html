@@ -146,6 +146,30 @@
   #message.ok    { display: block; background: rgba(163, 230, 53, .12); color: var(--accent); border: 1px solid rgba(163, 230, 53, .35); }
   #message.error { display: block; background: rgba(248, 113, 113, .1); color: var(--danger); border: 1px solid rgba(248, 113, 113, .35); }
 
+  /* ---------- タブ ---------- */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin: 14px 20px 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+  }
+  .tabs button {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 9px 0;
+    border-radius: 9px;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .tabs button.active { background: var(--surface-2); color: var(--accent); }
+
   /* ---------- サマリー ---------- */
   .summary {
     display: flex;
@@ -216,6 +240,18 @@
   }
   .del-btn:active { color: var(--danger); }
   #empty-msg { color: #566072; font-size: 14px; text-align: center; padding: 24px 0; }
+
+  /* ---------- 履歴の日付見出し ---------- */
+  #log-list li.day-header {
+    background: none;
+    border: none;
+    padding: 12px 2px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  #log-list li.day-header .d { font-size: 15px; font-weight: 800; color: var(--accent); }
+  #log-list li.day-header .s { font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -247,14 +283,19 @@
 
 <div id="message"></div>
 
+<div class="tabs">
+  <button id="tab-today" class="active">今日</button>
+  <button id="tab-history">履歴</button>
+</div>
+
 <div class="summary">
-  <div class="card"><div class="num" id="sum-count">0</div><div class="lbl">種目数</div></div>
-  <div class="card"><div class="num" id="sum-sets">0</div><div class="lbl">総セット</div></div>
-  <div class="card"><div class="num" id="sum-volume">0</div><div class="lbl">総負荷量 (kg)</div></div>
+  <div class="card"><div class="num" id="sum-1">0</div><div class="lbl" id="sum-1-lbl">種目数</div></div>
+  <div class="card"><div class="num" id="sum-2">0</div><div class="lbl" id="sum-2-lbl">総セット</div></div>
+  <div class="card"><div class="num" id="sum-3">0</div><div class="lbl" id="sum-3-lbl">総負荷量 (kg)</div></div>
 </div>
 
 <section class="log-section">
-  <h2>今日の記録</h2>
+  <h2 id="log-title">今日の記録</h2>
   <ul id="log-list"></ul>
   <div id="empty-msg">まだ記録がありません。音声かテキストで入力してください。</div>
 </section>
@@ -386,60 +427,137 @@ let entries = loadEntries();
 ============================== */
 const logList = document.getElementById("log-list");
 const emptyMsg = document.getElementById("empty-msg");
-const sumCount = document.getElementById("sum-count");
-const sumSets = document.getElementById("sum-sets");
-const sumVolume = document.getElementById("sum-volume");
+const logTitle = document.getElementById("log-title");
+const sumNums = [1, 2, 3].map(i => document.getElementById(`sum-${i}`));
+const sumLbls = [1, 2, 3].map(i => document.getElementById(`sum-${i}-lbl`));
+
+let currentView = "today"; // "today" | "history"
+
+function setSummary(items) {
+  items.forEach(([num, lbl], i) => {
+    sumNums[i].textContent = num;
+    sumLbls[i].textContent = lbl;
+  });
+}
+
+function formatDateLabel(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  const label = `${m}/${d} (${"日月火水木金土"[dt.getDay()]})`;
+  return dateStr === todayStr() ? `${label} 今日` : label;
+}
+
+function createEntryLi(e) {
+  const li = document.createElement("li");
+
+  const badge = document.createElement("span");
+  badge.className = `part-badge part-${e.part}`;
+  badge.textContent = e.part;
+
+  const main = document.createElement("div");
+  main.className = "entry-main";
+  const nameDiv = document.createElement("div");
+  nameDiv.className = "name";
+  nameDiv.textContent = e.name;
+  const isBodyweight = e.weight === 0;
+  const detailDiv = document.createElement("div");
+  detailDiv.className = "detail";
+  detailDiv.textContent = isBodyweight
+    ? `自重 × ${e.reps}回 × ${e.sets}セット`
+    : `${e.weight}kg × ${e.reps}回 × ${e.sets}セット`;
+  main.append(nameDiv, detailDiv);
+
+  const vol = document.createElement("div");
+  vol.className = "entry-vol";
+  vol.innerHTML = isBodyweight
+    ? `<div class="v">${(e.reps * e.sets).toLocaleString()}</div><div class="u">回 合計</div>`
+    : `<div class="v">${e.volume.toLocaleString()}</div><div class="u">kg 総負荷</div>`;
+
+  const del = document.createElement("button");
+  del.className = "del-btn";
+  del.setAttribute("aria-label", "削除");
+  del.textContent = "×";
+  del.addEventListener("click", () => {
+    entries = entries.filter(x => x.id !== e.id);
+    saveEntries(entries);
+    render();
+  });
+
+  li.append(badge, main, vol, del);
+  return li;
+}
 
 function render() {
-  const today = entries.filter(e => e.date === todayStr());
   logList.innerHTML = "";
+  if (currentView === "today") renderToday();
+  else renderHistory();
+}
+
+function renderToday() {
+  logTitle.textContent = "今日の記録";
+  emptyMsg.textContent = "まだ記録がありません。音声かテキストで入力してください。";
+  const today = entries.filter(e => e.date === todayStr());
   emptyMsg.style.display = today.length ? "none" : "block";
 
   // 新しい記録を上に表示
-  [...today].reverse().forEach(e => {
-    const li = document.createElement("li");
+  [...today].reverse().forEach(e => logList.appendChild(createEntryLi(e)));
 
-    const badge = document.createElement("span");
-    badge.className = `part-badge part-${e.part}`;
-    badge.textContent = e.part;
-
-    const main = document.createElement("div");
-    main.className = "entry-main";
-    const nameDiv = document.createElement("div");
-    nameDiv.className = "name";
-    nameDiv.textContent = e.name;
-    const isBodyweight = e.weight === 0;
-    const detailDiv = document.createElement("div");
-    detailDiv.className = "detail";
-    detailDiv.textContent = isBodyweight
-      ? `自重 × ${e.reps}回 × ${e.sets}セット`
-      : `${e.weight}kg × ${e.reps}回 × ${e.sets}セット`;
-    main.append(nameDiv, detailDiv);
-
-    const vol = document.createElement("div");
-    vol.className = "entry-vol";
-    vol.innerHTML = isBodyweight
-      ? `<div class="v">${(e.reps * e.sets).toLocaleString()}</div><div class="u">回 合計</div>`
-      : `<div class="v">${e.volume.toLocaleString()}</div><div class="u">kg 総負荷</div>`;
-
-    const del = document.createElement("button");
-    del.className = "del-btn";
-    del.setAttribute("aria-label", "削除");
-    del.textContent = "×";
-    del.addEventListener("click", () => {
-      entries = entries.filter(x => x.id !== e.id);
-      saveEntries(entries);
-      render();
-    });
-
-    li.append(badge, main, vol, del);
-    logList.appendChild(li);
-  });
-
-  sumCount.textContent = today.length;
-  sumSets.textContent = today.reduce((s, e) => s + e.sets, 0);
-  sumVolume.textContent = today.reduce((s, e) => s + e.volume, 0).toLocaleString();
+  setSummary([
+    [today.length, "種目数"],
+    [today.reduce((s, e) => s + e.sets, 0), "総セット"],
+    [today.reduce((s, e) => s + e.volume, 0).toLocaleString(), "総負荷量 (kg)"],
+  ]);
 }
+
+function renderHistory() {
+  logTitle.textContent = "トレーニング履歴";
+  emptyMsg.textContent = "まだ記録がありません。";
+  const dates = [...new Set(entries.map(e => e.date))].sort().reverse();
+  emptyMsg.style.display = dates.length ? "none" : "block";
+
+  for (const date of dates) {
+    const dayEntries = entries.filter(e => e.date === date);
+    const dayVolume = dayEntries.reduce((s, e) => s + e.volume, 0);
+    const parts = [...new Set(dayEntries.map(e => e.part))].join("・");
+
+    const header = document.createElement("li");
+    header.className = "day-header";
+    header.innerHTML =
+      `<span class="d">${formatDateLabel(date)}</span>` +
+      `<span class="s">${parts} ／ 総負荷 ${dayVolume.toLocaleString()}kg</span>`;
+    logList.appendChild(header);
+
+    [...dayEntries].reverse().forEach(e => logList.appendChild(createEntryLi(e)));
+  }
+
+  setSummary([
+    [dates.length, "トレーニング日数"],
+    [entries.length, "総記録数"],
+    [entries.reduce((s, e) => s + e.volume, 0).toLocaleString(), "全期間の総負荷 (kg)"],
+  ]);
+}
+
+/* ==============================
+   タブ切り替え
+============================== */
+const tabToday = document.getElementById("tab-today");
+const tabHistory = document.getElementById("tab-history");
+const todayOnlyEls = [
+  document.querySelector(".voice-area"),
+  document.getElementById("transcript-box"),
+  document.querySelector(".manual-row"),
+];
+
+function setView(view) {
+  currentView = view;
+  tabToday.classList.toggle("active", view === "today");
+  tabHistory.classList.toggle("active", view === "history");
+  todayOnlyEls.forEach(el => { el.style.display = view === "today" ? "" : "none"; });
+  render();
+}
+
+tabToday.addEventListener("click", () => setView("today"));
+tabHistory.addEventListener("click", () => setView("history"));
 
 /* ==============================
    記録の追加
