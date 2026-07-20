@@ -241,6 +241,42 @@
   .del-btn:active { color: var(--danger); }
   #empty-msg { color: #566072; font-size: 14px; text-align: center; padding: 24px 0; }
 
+  /* ---------- 部位別の負荷 ---------- */
+  .part-section { padding: 0 20px; margin-top: 14px; }
+  .part-section h2 {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: .05em;
+  }
+  #part-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  #part-list li {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #part-list .bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #part-list .bar { height: 100%; border-radius: 3px; background: var(--accent); }
+  #part-list .val {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
   /* ---------- 履歴の日付見出し ---------- */
   #log-list li.day-header {
     background: none;
@@ -293,6 +329,11 @@
   <div class="card"><div class="num" id="sum-2">0</div><div class="lbl" id="sum-2-lbl">総セット</div></div>
   <div class="card"><div class="num" id="sum-3">0</div><div class="lbl" id="sum-3-lbl">総負荷量 (kg)</div></div>
 </div>
+
+<section class="part-section" id="part-section" style="display:none">
+  <h2 id="part-title">部位別の負荷</h2>
+  <ul id="part-list"></ul>
+</section>
 
 <section class="log-section">
   <h2 id="log-title">今日の記録</h2>
@@ -487,6 +528,55 @@ function createEntryLi(e) {
   return li;
 }
 
+/* ---------- 部位別の負荷 ---------- */
+const partSection = document.getElementById("part-section");
+const partTitle = document.getElementById("part-title");
+const partList = document.getElementById("part-list");
+
+function computePartTotals(list) {
+  const map = new Map();
+  for (const e of list) {
+    const t = map.get(e.part) || { part: e.part, volume: 0, bwReps: 0 };
+    if (e.weight === 0) t.bwReps += e.reps * e.sets;
+    else t.volume += e.volume;
+    map.set(e.part, t);
+  }
+  return [...map.values()].sort((a, b) => (b.volume - a.volume) || (b.bwReps - a.bwReps));
+}
+
+function renderPartBreakdown(list, title) {
+  partTitle.textContent = title;
+  const totals = computePartTotals(list);
+  partList.innerHTML = "";
+  partSection.style.display = totals.length ? "" : "none";
+
+  const maxVol = Math.max(1, ...totals.map(t => t.volume));
+  totals.forEach(t => {
+    const li = document.createElement("li");
+
+    const badge = document.createElement("span");
+    badge.className = `part-badge part-${t.part}`;
+    badge.textContent = t.part;
+
+    const barWrap = document.createElement("div");
+    barWrap.className = "bar-wrap";
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    bar.style.width = `${Math.round((t.volume / maxVol) * 100)}%`;
+    barWrap.appendChild(bar);
+
+    const val = document.createElement("span");
+    val.className = "val";
+    const parts = [];
+    if (t.volume) parts.push(`${t.volume.toLocaleString()}kg`);
+    if (t.bwReps) parts.push(`自重${t.bwReps.toLocaleString()}回`);
+    val.textContent = parts.join(" + ");
+
+    li.append(badge, barWrap, val);
+    partList.appendChild(li);
+  });
+}
+
 function render() {
   logList.innerHTML = "";
   if (currentView === "today") renderToday();
@@ -507,6 +597,7 @@ function renderToday() {
     [today.reduce((s, e) => s + e.sets, 0), "総セット"],
     [today.reduce((s, e) => s + e.volume, 0).toLocaleString(), "総負荷量 (kg)"],
   ]);
+  renderPartBreakdown(today, "部位別の負荷（今日）");
 }
 
 function renderHistory() {
@@ -535,6 +626,7 @@ function renderHistory() {
     [entries.length, "総記録数"],
     [entries.reduce((s, e) => s + e.volume, 0).toLocaleString(), "全期間の総負荷 (kg)"],
   ]);
+  renderPartBreakdown(entries, "部位別の負荷（全期間）");
 }
 
 /* ==============================
