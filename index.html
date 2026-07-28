@@ -43,96 +43,93 @@
   header h1 span { color: var(--accent); }
   #today-date { font-size: 13px; color: var(--text-dim); }
 
-  /* ---------- 音声入力エリア ---------- */
-  .voice-area {
-    padding: 12px 20px 4px;
-    text-align: center;
-  }
-  #mic-btn {
-    width: 104px;
-    height: 104px;
-    border-radius: 50%;
-    border: none;
-    background: var(--accent);
-    color: #10130a;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 6px 24px rgba(163, 230, 53, .35);
-    transition: transform .1s ease, background .2s ease;
-    touch-action: manipulation;
-  }
-  #mic-btn:active { transform: scale(.94); }
-  #mic-btn svg { width: 44px; height: 44px; }
-  #mic-btn.recording {
-    background: var(--rec);
-    color: #fff;
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, .6);
-    animation: pulse 1.4s infinite;
-  }
-  @keyframes pulse {
-    0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, .55); }
-    70%  { box-shadow: 0 0 0 26px rgba(239, 68, 68, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-  }
-  #mic-btn:disabled { background: var(--surface-2); color: var(--text-dim); box-shadow: none; cursor: not-allowed; }
-  #mic-hint { margin-top: 10px; font-size: 13px; color: var(--text-dim); min-height: 1.3em; }
-  #mic-hint.listening { color: var(--rec); font-weight: 700; }
-
-  /* ---------- 認識テキスト表示 ---------- */
-  #transcript-box {
-    margin: 12px 20px 0;
-    padding: 12px 14px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    min-height: 52px;
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  #transcript-box .label {
-    flex-shrink: 0;
+  /* ---------- 入力フォーム ---------- */
+  .input-form { padding: 8px 20px 0; }
+  .field { margin-bottom: 10px; }
+  .field > label {
+    display: block;
     font-size: 11px;
     color: var(--text-dim);
-    writing-mode: horizontal-tb;
+    font-weight: 700;
+    letter-spacing: .05em;
+    margin-bottom: 5px;
   }
-  #transcript-text { flex: 1; word-break: break-all; }
-  #transcript-text .interim { color: var(--text-dim); }
-  #transcript-text:empty::before { content: "例：「ベンチプレス60キロ 10回 3セット」"; color: #566072; font-size: 14px; }
-
-  /* ---------- 手入力フォールバック ---------- */
-  .manual-row {
-    display: flex;
-    gap: 8px;
-    margin: 10px 20px 0;
-  }
-  .manual-row input {
-    flex: 1;
+  /* iOS/Androidではネイティブのホイールピッカーで表示される */
+  .input-form select,
+  .input-form input[type="text"],
+  .input-form input[type="number"] {
+    width: 100%;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
     color: var(--text);
-    font-size: 16px;
-    padding: 12px 14px;
-    min-width: 0;
-  }
-  .manual-row input::placeholder { color: #566072; }
-  .manual-row input:focus { outline: 2px solid var(--accent-dark); border-color: transparent; }
-  .manual-row button {
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    color: var(--accent);
-    font-size: 15px;
-    font-weight: 700;
-    padding: 0 18px;
-    border-radius: 10px;
-    cursor: pointer;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 13px 14px;
+    -webkit-appearance: none;
+    appearance: none;
     touch-action: manipulation;
   }
-  .manual-row button:active { background: var(--border); }
+  .input-form select {
+    /* 右端にプルダウンを示す山形アイコンを描画 */
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%239aa3b2' stroke-width='2'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 12px 8px;
+    padding-right: 36px;
+  }
+  .input-form select:focus,
+  .input-form input:focus { outline: 2px solid var(--accent-dark); border-color: transparent; }
+  .input-form input::placeholder { color: #566072; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; margin-bottom: 10px; }
+
+  /* 重量: 数値入力＋増減ボタン */
+  .weight-row { display: flex; gap: 8px; align-items: stretch; }
+  .weight-row input { flex: 1; text-align: center; min-width: 0; }
+  .weight-row button {
+    flex-shrink: 0;
+    width: 56px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--accent);
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    touch-action: manipulation;
+    font-variant-numeric: tabular-nums;
+  }
+  .weight-row button:active { background: var(--border); }
+  #bodyweight-note {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    display: none;
+  }
+
+  /* 記録ボタン */
+  #submit-btn {
+    width: 100%;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    color: #10130a;
+    font-size: 17px;
+    font-weight: 800;
+    padding: 15px 0;
+    margin-top: 2px;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(163, 230, 53, .25);
+    touch-action: manipulation;
+  }
+  #submit-btn:active { transform: scale(.99); }
+  #submit-btn:disabled {
+    background: var(--surface-2);
+    color: var(--text-dim);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
 
   /* ---------- メッセージ ---------- */
   #message {
@@ -297,24 +294,39 @@
   <div id="today-date"></div>
 </header>
 
-<div class="voice-area">
-  <button id="mic-btn" aria-label="音声入力">
-    <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
-      <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V21H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-3.08A7 7 0 0 0 19 11z"/>
-    </svg>
-  </button>
-  <div id="mic-hint">マイクをタップして話す</div>
-</div>
+<div class="input-form" id="input-form">
+  <div class="field">
+    <label for="sel-exercise">種目</label>
+    <select id="sel-exercise"></select>
+  </div>
 
-<div id="transcript-box">
-  <span class="label">認識結果</span>
-  <span id="transcript-text"></span>
-</div>
+  <div class="field" id="custom-field" style="display:none">
+    <label for="custom-name">種目名（自由入力）</label>
+    <input type="text" id="custom-name" placeholder="例：ケーブルカール" autocomplete="off">
+  </div>
 
-<div class="manual-row">
-  <input type="text" id="manual-input" placeholder="テキストで入力もOK" autocomplete="off">
-  <button id="manual-add">追加</button>
+  <div class="field">
+    <label for="input-weight">重量 (kg) ／ 0 で自重</label>
+    <div class="weight-row">
+      <button type="button" id="weight-minus" aria-label="重量を2.5kg減らす">−2.5</button>
+      <input type="number" id="input-weight" inputmode="decimal" step="2.5" min="0" value="0">
+      <button type="button" id="weight-plus" aria-label="重量を2.5kg増やす">＋2.5</button>
+    </div>
+    <div id="bodyweight-note">自重種目として記録します（回数×セットを集計）</div>
+  </div>
+
+  <div class="field-row">
+    <div class="field">
+      <label for="sel-reps">回数</label>
+      <select id="sel-reps"></select>
+    </div>
+    <div class="field">
+      <label for="sel-sets">セット数</label>
+      <select id="sel-sets"></select>
+    </div>
+  </div>
+
+  <button id="submit-btn">記録する</button>
 </div>
 
 <div id="message"></div>
@@ -338,7 +350,7 @@
 <section class="log-section">
   <h2 id="log-title">今日の記録</h2>
   <ul id="log-list"></ul>
-  <div id="empty-msg">まだ記録がありません。音声かテキストで入力してください。</div>
+  <div id="empty-msg">まだ記録がありません。上のフォームから記録してください。</div>
 </section>
 
 <script>
@@ -389,54 +401,14 @@ function judgeBodyPart(name) {
   return "その他";
 }
 
-/* ==============================
-   自然言語パーサー
-   例：「ベンチプレス60キロ、10回、3セット」
-============================== */
-function normalizeText(raw) {
-  return raw
-    // 全角英数字 → 半角
-    .replace(/[０-９ａ-ｚＡ-Ｚ．]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
-    .replace(/。/g, "")
-    .trim();
-}
-
-function parseWorkout(raw) {
-  const text = normalizeText(raw);
-  if (!text) return { error: "テキストが空です" };
-
-  // 重量: 「60キロ」「60kg」「60.5 kg」
-  const weightMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:kg|KG|Kg|キロ|ｷﾛ)/);
-  // 回数: 「10回」「10レップ」「10rep(s)」
-  const repsMatch = text.match(/(\d+)\s*(?:回|レップ|reps?|レップス)/i);
-  // セット数: 「3セット」「3set(s)」
-  const setsMatch = text.match(/(\d+)\s*(?:セット|sets?)/i);
-
-  // 種目名 = 最初の数値より前の部分
-  const firstNum = text.search(/\d/);
-  let name = (firstNum === -1 ? text : text.slice(0, firstNum))
-    .replace(/[、,。．\s]+$/g, "")
-    .replace(/(を|で|は)$/g, "")
-    .trim();
-
-  if (!name) return { error: "種目名が読み取れませんでした" };
-  if (!weightMatch && !repsMatch) {
-    return { error: "重量・回数が読み取れませんでした（例：ベンチプレス60キロ 10回 3セット）" };
+/* 部位ごとに種目をまとめる（プルダウンのグループ表示用。定義順を維持） */
+function groupExercisesByPart() {
+  const groups = new Map();
+  for (const [name, part] of Object.entries(BODY_PART_MASTER)) {
+    if (!groups.has(part)) groups.set(part, []);
+    groups.get(part).push(name);
   }
-
-  const weight = weightMatch ? parseFloat(weightMatch[1]) : 0; // 自重種目は0kg扱い
-  const reps = repsMatch ? parseInt(repsMatch[1], 10) : 1;
-  const sets = setsMatch ? parseInt(setsMatch[1], 10) : 1;
-  const volume = Math.round(weight * reps * sets * 10) / 10; // 総負荷量
-
-  return {
-    name,
-    part: judgeBodyPart(name),
-    weight,
-    reps,
-    sets,
-    volume,
-  };
+  return groups;
 }
 
 /* ==============================
@@ -585,7 +557,7 @@ function render() {
 
 function renderToday() {
   logTitle.textContent = "今日の記録";
-  emptyMsg.textContent = "まだ記録がありません。音声かテキストで入力してください。";
+  emptyMsg.textContent = "まだ記録がありません。上のフォームから記録してください。";
   const today = entries.filter(e => e.date === todayStr());
   emptyMsg.style.display = today.length ? "none" : "block";
 
@@ -634,11 +606,7 @@ function renderHistory() {
 ============================== */
 const tabToday = document.getElementById("tab-today");
 const tabHistory = document.getElementById("tab-history");
-const todayOnlyEls = [
-  document.querySelector(".voice-area"),
-  document.getElementById("transcript-box"),
-  document.querySelector(".manual-row"),
-];
+const todayOnlyEls = [document.getElementById("input-form")];
 
 function setView(view) {
   currentView = view;
@@ -664,140 +632,155 @@ function showMessage(text, type) {
   messageTimer = setTimeout(() => { messageEl.className = ""; }, 4000);
 }
 
-function addFromText(raw) {
-  const result = parseWorkout(raw);
-  if (result.error) {
-    showMessage(`⚠ ${result.error}`, "error");
-    return false;
-  }
+function addEntry({ name, weight, reps, sets }) {
+  const part = judgeBodyPart(name);
+  const volume = Math.round(weight * reps * sets * 10) / 10; // 総負荷量
   entries.push({
     id: Date.now() + Math.random(),
     date: todayStr(),
-    ...result,
+    name, part, weight, reps, sets, volume,
   });
   saveEntries(entries);
   render();
-  const summary = result.weight === 0
-    ? `合計 ${(result.reps * result.sets).toLocaleString()}回`
-    : `総負荷 ${result.volume.toLocaleString()}kg`;
-  showMessage(`✓ ${result.name}（${result.part}）を記録しました — ${summary}`, "ok");
-  return true;
+  const summary = weight === 0
+    ? `合計 ${(reps * sets).toLocaleString()}回`
+    : `総負荷 ${volume.toLocaleString()}kg`;
+  showMessage(`✓ ${name}（${part}）を記録しました — ${summary}`, "ok");
 }
 
 /* ==============================
-   手入力
+   入力フォーム
 ============================== */
-const manualInput = document.getElementById("manual-input");
-document.getElementById("manual-add").addEventListener("click", () => {
-  if (addFromText(manualInput.value)) manualInput.value = "";
-});
-manualInput.addEventListener("keydown", e => {
-  if (e.key === "Enter") {
-    if (addFromText(manualInput.value)) manualInput.value = "";
+const CUSTOM_VALUE = "__custom__";
+const selExercise = document.getElementById("sel-exercise");
+const selReps = document.getElementById("sel-reps");
+const selSets = document.getElementById("sel-sets");
+const customField = document.getElementById("custom-field");
+const customName = document.getElementById("custom-name");
+const inputWeight = document.getElementById("input-weight");
+const bodyweightNote = document.getElementById("bodyweight-note");
+
+/* マスタにない種目（自由入力したもの）を履歴から拾って選択肢に載せる */
+function customExerciseNames() {
+  const seen = [];
+  for (let i = entries.length - 1; i >= 0 && seen.length < 12; i--) {
+    const name = entries[i].name;
+    if (!(name in BODY_PART_MASTER) && !seen.includes(name)) seen.push(name);
+  }
+  return seen;
+}
+
+function buildExerciseOptions() {
+  const keep = selExercise.value;
+  selExercise.innerHTML = "";
+
+  // 過去に自由入力した種目を先頭に
+  const customs = customExerciseNames();
+  if (customs.length) {
+    const group = document.createElement("optgroup");
+    group.label = "最近使った種目";
+    for (const name of customs) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      group.appendChild(opt);
+    }
+    selExercise.appendChild(group);
+  }
+
+  // 種目: 部位ごとのグループ + 自由入力
+  for (const [part, names] of groupExercisesByPart()) {
+    const group = document.createElement("optgroup");
+    group.label = part;
+    for (const name of names) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      group.appendChild(opt);
+    }
+    selExercise.appendChild(group);
+  }
+  const customOpt = document.createElement("option");
+  customOpt.value = CUSTOM_VALUE;
+  customOpt.textContent = "＋ その他（自由入力）";
+  selExercise.appendChild(customOpt);
+
+  if (keep) selExercise.value = keep;
+}
+
+function buildCountOptions() {
+  const fill = (sel, max, unit, initial) => {
+    for (let i = 1; i <= max; i++) {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = `${i}${unit}`;
+      sel.appendChild(opt);
+    }
+    sel.value = initial;
+  };
+  fill(selReps, 30, "回", 10);
+  fill(selSets, 10, "セット", 3);
+}
+
+/* 同じ種目の直近の記録をフォームに復元する（多くの場合そのまま記録できる） */
+function prefillFromLastRecord(name, silent) {
+  const last = [...entries].reverse().find(e => e.name === name);
+  if (!last) return;
+  inputWeight.value = last.weight;
+  if (last.reps >= 1 && last.reps <= 30) selReps.value = last.reps;
+  if (last.sets >= 1 && last.sets <= 10) selSets.value = last.sets;
+  updateBodyweightNote();
+  if (!silent) {
+    showMessage(`前回の記録を反映しました（${last.weight === 0 ? "自重" : last.weight + "kg"} × ${last.reps}回 × ${last.sets}セット）`, "ok");
+  }
+}
+
+function updateBodyweightNote() {
+  bodyweightNote.style.display = Number(inputWeight.value) === 0 ? "block" : "none";
+}
+
+selExercise.addEventListener("change", () => {
+  const isCustom = selExercise.value === CUSTOM_VALUE;
+  customField.style.display = isCustom ? "" : "none";
+  if (isCustom) {
+    customName.focus();
+  } else {
+    prefillFromLastRecord(selExercise.value);
   }
 });
 
-/* ==============================
-   音声入力（Web Speech API）
-============================== */
-const micBtn = document.getElementById("mic-btn");
-const micHint = document.getElementById("mic-hint");
-const transcriptText = document.getElementById("transcript-text");
-
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognition = null;
-let listening = false;
-
-/* キーボード音声入力モード:
-   Web Speech APIが使えない端末（iOS Safariのservice-not-allowed等）では、
-   マイクボタンで入力欄にフォーカスし、キーボードのマイクで話してもらう */
-const DICTATION_MODE_KEY = "useKeyboardDictation";
-let dictationMode = !SpeechRecognition || localStorage.getItem(DICTATION_MODE_KEY) === "1";
-
-function enterDictationMode(persist) {
-  dictationMode = true;
-  if (persist) localStorage.setItem(DICTATION_MODE_KEY, "1");
-  micHint.textContent = "タップ → キーボードのマイク 🎤 で話す";
-  manualInput.placeholder = "キーボードのマイクで話して「追加」";
+for (const [id, delta] of [["weight-minus", -2.5], ["weight-plus", 2.5]]) {
+  document.getElementById(id).addEventListener("click", () => {
+    const next = Math.max(0, (Number(inputWeight.value) || 0) + delta);
+    inputWeight.value = Math.round(next * 10) / 10;
+    updateBodyweightNote();
+  });
 }
+inputWeight.addEventListener("input", updateBodyweightNote);
 
-if (SpeechRecognition) {
-  recognition = new SpeechRecognition();
-  recognition.lang = "ja-JP";
-  recognition.interimResults = true;
-  recognition.continuous = false;
-
-  recognition.onstart = () => {
-    listening = true;
-    micBtn.classList.add("recording");
-    micHint.textContent = "聞き取り中… もう一度タップで停止";
-    micHint.classList.add("listening");
-    transcriptText.textContent = "";
-  };
-
-  recognition.onresult = (event) => {
-    let finalText = "";
-    let interimText = "";
-    for (const result of event.results) {
-      if (result.isFinal) finalText += result[0].transcript;
-      else interimText += result[0].transcript;
-    }
-    transcriptText.innerHTML = "";
-    transcriptText.append(finalText);
-    if (interimText) {
-      const span = document.createElement("span");
-      span.className = "interim";
-      span.textContent = interimText;
-      transcriptText.appendChild(span);
-    }
-    if (finalText) addFromText(finalText);
-  };
-
-  recognition.onerror = (event) => {
-    if (event.error === "no-speech") {
-      showMessage("⚠ 音声が聞き取れませんでした。もう一度お試しください", "error");
-    } else if (event.error === "service-not-allowed") {
-      enterDictationMode(true);
-      showMessage("この端末ではWeb音声認識が使えないため、キーボード音声入力モードに切り替えました。マイクボタンをタップ → キーボードのマイク 🎤 で話して「追加」を押してください", "ok");
-    } else if (event.error === "not-allowed") {
-      showMessage("⚠ マイクの使用が拒否されています [not-allowed]。アドレスバー左の「ぁあ」→「Webサイトの設定」→ マイクを「許可」に。ホーム画面から起動している場合はSafari本体で開き直してください", "error");
-    } else if (event.error === "audio-capture") {
-      showMessage("⚠ マイクにアクセスできません [audio-capture]。他のアプリがマイクを使用していないか確認してください", "error");
-    } else if (event.error !== "aborted") {
-      showMessage(`⚠ 音声認識エラー: ${event.error}`, "error");
-    }
-  };
-
-  recognition.onend = () => {
-    listening = false;
-    micBtn.classList.remove("recording");
-    micHint.classList.remove("listening");
-    if (dictationMode) {
-      enterDictationMode(false);
-    } else {
-      micHint.textContent = "マイクをタップして話す";
-    }
-  };
-
-}
-
-micBtn.addEventListener("click", () => {
-  if (dictationMode || !recognition) {
-    manualInput.focus();
+document.getElementById("submit-btn").addEventListener("click", () => {
+  const isCustom = selExercise.value === CUSTOM_VALUE;
+  const name = isCustom ? customName.value.trim() : selExercise.value;
+  if (!name) {
+    showMessage("⚠ 種目名を入力してください", "error");
+    customName.focus();
     return;
   }
-  if (listening) {
-    recognition.stop();
-  } else {
-    try {
-      recognition.start();
-    } catch {
-      /* 連打などで既に開始済みの場合は無視 */
-    }
+  const weight = Math.max(0, Number(inputWeight.value) || 0);
+  addEntry({
+    name,
+    weight,
+    reps: Number(selReps.value),
+    sets: Number(selSets.value),
+  });
+  if (isCustom) {
+    // 次回からプルダウンで選べるように選択肢へ追加し、そのまま選択状態にする
+    customName.value = "";
+    buildExerciseOptions();
+    selExercise.value = name;
+    customField.style.display = "none";
   }
 });
-
-if (dictationMode) enterDictationMode(false);
 
 /* ==============================
    初期化
@@ -805,6 +788,15 @@ if (dictationMode) enterDictationMode(false);
 const now = new Date();
 document.getElementById("today-date").textContent =
   `${now.getMonth() + 1}/${now.getDate()} (${"日月火水木金土"[now.getDay()]})`;
+buildExerciseOptions();
+buildCountOptions();
+// 直近に記録した種目を初期選択にして、前回の重量・回数・セットを復元しておく
+const lastEntry = entries.at(-1);
+if (lastEntry && [...selExercise.options].some(o => o.value === lastEntry.name)) {
+  selExercise.value = lastEntry.name;
+}
+prefillFromLastRecord(selExercise.value, true);
+updateBodyweightNote();
 render();
 </script>
 </body>
