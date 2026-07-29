@@ -167,6 +167,27 @@
   }
   .tabs button.active { background: var(--surface-2); color: var(--accent); }
 
+  /* ---------- 履歴の期間セレクタ ---------- */
+  .scope-row { margin: 12px 20px 0; }
+  .scope-row select {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 700;
+    padding: 11px 36px 11px 14px;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%239aa3b2' stroke-width='2'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 12px 8px;
+    touch-action: manipulation;
+  }
+  .scope-row select:focus { outline: 2px solid var(--accent-dark); border-color: transparent; }
+
   /* ---------- サマリー ---------- */
   .summary {
     display: flex;
@@ -334,6 +355,10 @@
 <div class="tabs">
   <button id="tab-today" class="active">今日</button>
   <button id="tab-history">履歴</button>
+</div>
+
+<div class="scope-row" id="scope-row" style="display:none">
+  <select id="sel-scope" aria-label="表示する期間"></select>
 </div>
 
 <div class="summary">
@@ -572,33 +597,76 @@ function renderToday() {
   renderPartBreakdown(today, "部位別の負荷（今日）");
 }
 
+/* 履歴の表示範囲: "all"（全期間）または "YYYY-MM-DD"（1日） */
+const SCOPE_ALL = "all";
+let historyScope = SCOPE_ALL;
+const scopeRow = document.getElementById("scope-row");
+const selScope = document.getElementById("sel-scope");
+
+function buildScopeOptions(dates) {
+  selScope.innerHTML = "";
+  const all = document.createElement("option");
+  all.value = SCOPE_ALL;
+  all.textContent = `全期間（${dates.length}日分）`;
+  selScope.appendChild(all);
+  for (const date of dates) {
+    const opt = document.createElement("option");
+    opt.value = date;
+    opt.textContent = formatDateLabel(date);
+    selScope.appendChild(opt);
+  }
+  selScope.value = historyScope;
+}
+
+selScope.addEventListener("change", () => {
+  historyScope = selScope.value;
+  render();
+});
+
 function renderHistory() {
-  logTitle.textContent = "トレーニング履歴";
   emptyMsg.textContent = "まだ記録がありません。";
   const dates = [...new Set(entries.map(e => e.date))].sort().reverse();
-  emptyMsg.style.display = dates.length ? "none" : "block";
+  // 選択中の日の記録が全部消えた場合は全期間に戻す
+  if (historyScope !== SCOPE_ALL && !dates.includes(historyScope)) historyScope = SCOPE_ALL;
+  buildScopeOptions(dates);
 
-  for (const date of dates) {
+  const isAll = historyScope === SCOPE_ALL;
+  const scoped = isAll ? entries : entries.filter(e => e.date === historyScope);
+  const scopedDates = isAll ? dates : [historyScope];
+
+  logTitle.textContent = isAll ? "トレーニング履歴" : `${formatDateLabel(historyScope)} の記録`;
+  emptyMsg.style.display = scoped.length ? "none" : "block";
+
+  for (const date of scopedDates) {
     const dayEntries = entries.filter(e => e.date === date);
-    const dayVolume = dayEntries.reduce((s, e) => s + e.volume, 0);
-    const parts = [...new Set(dayEntries.map(e => e.part))].join("・");
 
-    const header = document.createElement("li");
-    header.className = "day-header";
-    header.innerHTML =
-      `<span class="d">${formatDateLabel(date)}</span>` +
-      `<span class="s">${parts} ／ 総負荷 ${dayVolume.toLocaleString()}kg</span>`;
-    logList.appendChild(header);
+    // 1日だけ表示しているときは見出しに日付が出ているので省略する
+    if (isAll) {
+      const dayVolume = dayEntries.reduce((s, e) => s + e.volume, 0);
+      const parts = [...new Set(dayEntries.map(e => e.part))].join("・");
+      const header = document.createElement("li");
+      header.className = "day-header";
+      header.innerHTML =
+        `<span class="d">${formatDateLabel(date)}</span>` +
+        `<span class="s">${parts} ／ 総負荷 ${dayVolume.toLocaleString()}kg</span>`;
+      logList.appendChild(header);
+    }
 
     [...dayEntries].reverse().forEach(e => logList.appendChild(createEntryLi(e)));
   }
 
-  setSummary([
-    [dates.length, "トレーニング日数"],
-    [entries.length, "総記録数"],
-    [entries.reduce((s, e) => s + e.volume, 0).toLocaleString(), "全期間の総負荷 (kg)"],
-  ]);
-  renderPartBreakdown(entries, "部位別の負荷（全期間）");
+  setSummary(isAll
+    ? [
+        [dates.length, "トレーニング日数"],
+        [entries.length, "総記録数"],
+        [entries.reduce((s, e) => s + e.volume, 0).toLocaleString(), "全期間の総負荷 (kg)"],
+      ]
+    : [
+        [scoped.length, "種目数"],
+        [scoped.reduce((s, e) => s + e.sets, 0), "総セット"],
+        [scoped.reduce((s, e) => s + e.volume, 0).toLocaleString(), "総負荷量 (kg)"],
+      ]);
+  renderPartBreakdown(scoped, `部位別の負荷（${isAll ? "全期間" : formatDateLabel(historyScope)}）`);
 }
 
 /* ==============================
@@ -613,6 +681,7 @@ function setView(view) {
   tabToday.classList.toggle("active", view === "today");
   tabHistory.classList.toggle("active", view === "history");
   todayOnlyEls.forEach(el => { el.style.display = view === "today" ? "" : "none"; });
+  scopeRow.style.display = view === "history" ? "" : "none";
   render();
 }
 
