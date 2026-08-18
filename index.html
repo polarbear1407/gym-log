@@ -387,16 +387,14 @@
 ============================== */
 const BODY_PART_MASTER = {
   // 胸
-  "ベンチプレス": "胸", "インクラインベンチプレス": "胸", "インクラインプレス": "胸",
+  "ベンチプレス": "胸", "インクラインベンチプレス": "胸",
   "ダンベルプレス": "胸", "チェストプレス": "胸", "ダンベルフライ": "胸",
   "ペックフライ": "胸", "ケーブルクロスオーバー": "胸", "ディップス": "胸",
-  "プッシュアップ": "胸", "腕立て伏せ": "胸", "腕立て": "胸",
+  "腕立て伏せ": "胸",
   // 背中
-  "デッドリフト": "背中", "ラットプルダウン": "背中", "ラットプル": "背中",
-  "ベントオーバーロー": "背中", "ベントオーバーロウ": "背中",
-  "シーテッドロー": "背中", "シーテッドロウ": "背中", "ワンハンドロー": "背中",
-  "ワンハンドロウ": "背中", "チンニング": "背中", "懸垂": "背中",
-  "プルオーバー": "背中", "バックエクステンション": "背中",
+  "デッドリフト": "背中", "ラットプルダウン": "背中",
+  "ベントオーバーロー": "背中", "シーテッドロー": "背中", "ワンハンドロー": "背中",
+  "懸垂": "背中", "プルオーバー": "背中", "バックエクステンション": "背中",
   // 脚
   "スクワット": "脚", "ブルガリアンスクワット": "脚", "フロントスクワット": "脚",
   "レッグプレス": "脚", "レッグエクステンション": "脚", "レッグカール": "脚",
@@ -405,7 +403,7 @@ const BODY_PART_MASTER = {
   // 肩
   "ショルダープレス": "肩", "ミリタリープレス": "肩", "サイドレイズ": "肩",
   "フロントレイズ": "肩", "リアレイズ": "肩", "アップライトロー": "肩",
-  "アップライトロウ": "肩", "フェイスプル": "肩", "シュラッグ": "肩",
+  "フェイスプル": "肩", "シュラッグ": "肩",
   // 腕
   "アームカール": "腕", "バーベルカール": "腕", "ダンベルカール": "腕",
   "ハンマーカール": "腕", "プリチャーカール": "腕", "インクラインカール": "腕",
@@ -416,12 +414,39 @@ const BODY_PART_MASTER = {
   "アブローラー": "腹", "クランチ": "腹", "シットアップ": "腹",
   "レッグレイズ": "腹", "プランク": "腹", "腹筋": "腹",
 };
+
+/* 表記ゆれ・略称 → 正式名。
+   プルダウンには正式名だけを出すが、過去の記録や自由入力でこれらの名前が
+   使われていても同じ種目として扱えるようにする（記録済みデータは書き換えない） */
+const EXERCISE_ALIASES = {
+  "インクラインプレス": "インクラインベンチプレス",
+  "プッシュアップ": "腕立て伏せ",
+  "腕立て": "腕立て伏せ",
+  "ラットプル": "ラットプルダウン",
+  "ベントオーバーロウ": "ベントオーバーロー",
+  "シーテッドロウ": "シーテッドロー",
+  "ワンハンドロウ": "ワンハンドロー",
+  "アップライトロウ": "アップライトロー",
+  "チンニング": "懸垂",
+};
+
 // 長い順にソートしたキー一覧（部分一致で長いものを優先）
 const MASTER_KEYS = Object.keys(BODY_PART_MASTER).sort((a, b) => b.length - a.length);
+const ALIAS_KEYS = Object.keys(EXERCISE_ALIASES).sort((a, b) => b.length - a.length);
+
+/* 表記ゆれを正式名に寄せる（マスタにない名前はそのまま返す） */
+function canonicalName(name) {
+  return EXERCISE_ALIASES[name] || name;
+}
 
 function judgeBodyPart(name) {
+  const canon = canonicalName(name);
   for (const key of MASTER_KEYS) {
-    if (name.includes(key)) return BODY_PART_MASTER[key];
+    if (canon.includes(key)) return BODY_PART_MASTER[key];
+  }
+  // 「バーベルベントオーバーロウ」のように表記ゆれを含む名前にも対応する
+  for (const key of ALIAS_KEYS) {
+    if (canon.includes(key)) return BODY_PART_MASTER[EXERCISE_ALIASES[key]];
   }
   return "その他";
 }
@@ -733,7 +758,8 @@ const bodyweightNote = document.getElementById("bodyweight-note");
 function customExerciseNames() {
   const seen = [];
   for (let i = entries.length - 1; i >= 0 && seen.length < 12; i--) {
-    const name = entries[i].name;
+    // 表記ゆれの名前（旧データ）はマスタの種目として扱い、ここには載せない
+    const name = canonicalName(entries[i].name);
     if (!(name in BODY_PART_MASTER) && !seen.includes(name)) seen.push(name);
   }
   return seen;
@@ -793,7 +819,9 @@ function buildCountOptions() {
 
 /* 同じ種目の直近の記録をフォームに復元する（多くの場合そのまま記録できる） */
 function prefillFromLastRecord(name, silent) {
-  const last = [...entries].reverse().find(e => e.name === name);
+  // 旧データが表記ゆれの名前でも同じ種目として拾えるようにする
+  const canon = canonicalName(name);
+  const last = [...entries].reverse().find(e => canonicalName(e.name) === canon);
   if (!last) return;
   inputWeight.value = last.weight;
   if (last.reps >= 1 && last.reps <= 30) selReps.value = last.reps;
@@ -860,9 +888,9 @@ document.getElementById("today-date").textContent =
 buildExerciseOptions();
 buildCountOptions();
 // 直近に記録した種目を初期選択にして、前回の重量・回数・セットを復元しておく
-const lastEntry = entries.at(-1);
-if (lastEntry && [...selExercise.options].some(o => o.value === lastEntry.name)) {
-  selExercise.value = lastEntry.name;
+const lastName = entries.length ? canonicalName(entries.at(-1).name) : null;
+if (lastName && [...selExercise.options].some(o => o.value === lastName)) {
+  selExercise.value = lastName;
 }
 prefillFromLastRecord(selExercise.value, true);
 updateBodyweightNote();
